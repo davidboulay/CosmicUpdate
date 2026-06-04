@@ -4,6 +4,12 @@ A panel applet for the **COSMIC** desktop (Pop!_OS) that shows how many app and
 system updates are pending and lets you check for new ones with a button. It can
 be added to the COSMIC panel or dock like any built-in applet.
 
+## Screenshots
+
+| Updates available | Up to date |
+|:---:|:---:|
+| ![Updates available](screenshots/updates-available.png) | ![Up to date](screenshots/up-to-date.png) |
+
 ## What it does
 
 - **Panel button** shows a badge with the total number of pending updates, or a
