@@ -1,0 +1,47 @@
+name: Release
+
+# Builds the applet and publishes the binary as a release asset whenever a
+# version tag (e.g. v0.1.0) is pushed. Can also be run manually.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    # Match Pop!_OS 24.04's glibc so the binary runs on the target.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libxkbcommon-dev libwayland-dev libdbus-1-dev \
+            libpulse-dev libpipewire-0.3-dev libinput-dev pkg-config
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build (release)
+        run: cargo build --release --locked
+
+      - name: Stage release assets
+        run: |
+          mkdir -p dist
+          cp target/release/cosmic-applet-updates dist/
+          cp data/com.github.davidboulay.CosmicAppletUpdates.desktop dist/
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/cosmic-applet-updates
+            dist/com.github.davidboulay.CosmicAppletUpdates.desktop
+          generate_release_notes: true

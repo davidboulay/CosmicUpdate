@@ -22,20 +22,26 @@ be added to the COSMIC panel or dock like any built-in applet.
 On startup the applet reads the *cached* update state (no prompt) so the badge
 populates immediately.
 
-## Build & install
+## Install
 
-Requires a Rust toolchain (edition 2024 / Rust ≥ 1.85).
+One command — no checkout required:
 
 ```sh
-./install.sh
+curl -fsSL https://raw.githubusercontent.com/davidboulay/CosmicUpdate/main/install.sh | bash
 ```
 
-This builds in release mode and installs to `~/.local`:
+The installer downloads a **prebuilt binary** from the latest [release](https://github.com/davidboulay/CosmicUpdate/releases)
+(x86_64, no Rust needed). On other architectures, or if no release is
+available, it automatically **builds from source** instead (requires a Rust
+toolchain — edition 2024 / Rust ≥ 1.85).
+
+It installs to `~/.local`:
 
 - binary → `~/.local/bin/cosmic-applet-updates`
 - desktop entry → `~/.local/share/applications/com.github.davidboulay.CosmicAppletUpdates.desktop`
 
-Install system-wide instead with `PREFIX=/usr/local sudo -E ./install.sh`.
+Install system-wide with `PREFIX=/usr/local sudo -E bash install.sh`, or from a
+checkout with `./install.sh`.
 
 ### Add it to the panel
 
