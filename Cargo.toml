@@ -1,0 +1,32 @@
+[package]
+name = "cosmic-applet-updates"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-only"
+description = "A COSMIC panel applet that shows pending app and system updates and lets you check for new ones."
+
+[[bin]]
+name = "cosmic-applet-updates"
+path = "src/main.rs"
+
+[dependencies]
+libcosmic = { git = "https://github.com/pop-os/libcosmic", rev = "59bebbdffeb8ed4abd3f2577c099745b9a2f2c37", default-features = false, features = [
+    "applet",
+    "applet-token",
+    "process",
+    "multi-window",
+    "tokio",
+    "wayland",
+    "winit",
+] }
+tokio = { version = "1", features = ["full"] }
+zbus = { version = "5", default-features = false, features = ["tokio"] }
+futures = "0.3"
+jiff = "0.2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-log = "0.2"
+
+[profile.release]
+lto = "thin"
+opt-level = 2

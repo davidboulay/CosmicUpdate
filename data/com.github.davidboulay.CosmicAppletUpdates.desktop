@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=Updates
+Comment=Show pending app and system updates and check for new ones
+Type=Application
+Exec=cosmic-applet-updates
+Terminal=false
+Categories=COSMIC;
+Keywords=COSMIC;Applet;Updates;Upgrade;Software;System;Flatpak;Store;
+Icon=software-update-available-symbolic
+NoDisplay=true
+X-CosmicApplet=true
+X-CosmicShrinkable=true
+X-CosmicHoverPopup=Auto
+X-HostWaylandDisplay=true
