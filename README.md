@@ -23,7 +23,26 @@ be added to the COSMIC panel or dock like any built-in applet.
   - System refresh goes through PackageKit; if your polkit policy requires it,
     the desktop's authentication agent will prompt. Per-repo warnings (e.g. a
     missing GPG key) are logged, not shown, so they don't hide real updates.
-- **"Install updates in COSMIC Store"** opens `cosmic-store` to apply them.
+- **"Install N updates"** applies everything *in place* — no need to open the
+  Store. System packages go through PackageKit's `UpdatePackages` (the same
+  transaction the COSMIC Store uses; the polkit agent prompts for
+  authorization), flatpaks through `flatpak update`. A progress bar tracks the
+  install and the badge clears as soon as it finishes.
+- **"Open in COSMIC Store"** is still there if you'd rather review updates in
+  the full Store UI.
+- **Settings** (the ⚙ button in the popup header) shows the applet's own
+  version and lets it keep itself up to date:
+  - **"Check for new version"** queries the latest [GitHub release](https://github.com/davidboulay/CosmicUpdate/releases)
+    and tells you whether a newer version is out. (This is distinct from the
+    main popup's **"Check for updates"**, which scans for system & app updates.)
+  - **"Automatically update the applet"** — when enabled, a newer release is
+    downloaded (the prebuilt binary, same as `install.sh`), installed over the
+    running binary, and the applet relaunches into it. The check runs on startup
+    and every few hours. The setting is persisted via `cosmic-config`.
+
+The applet also listens for PackageKit's `UpdatesChanged` signal, so when
+updates are installed elsewhere (e.g. the COSMIC Store) the badge refreshes
+**immediately** rather than waiting for the next periodic re-scan.
 
 On startup the applet reads the *cached* update state (no prompt) so the badge
 populates immediately.
@@ -75,7 +94,8 @@ cargo run --example check -- refresh # refresh metadata first
 | `src/main.rs` | binary entry point |
 | `src/lib.rs` | `run()` — launches the applet |
 | `src/window.rs` | the applet UI (panel button + popup) |
-| `src/backend.rs` | update discovery (PackageKit + flatpak) |
+| `src/backend.rs` | update discovery, in-place install, and the `UpdatesChanged` watch (PackageKit + flatpak) |
+| `src/updater.rs` | applet self-update: GitHub release check + download/replace/relaunch |
 | `examples/check.rs` | headless backend smoke test |
 | `data/*.desktop` | COSMIC applet registration |
 
