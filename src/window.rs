@@ -431,7 +431,10 @@ impl cosmic::Application for Window {
                     tracing::info!(
                         "self-update installed; exiting so the panel respawns the new version"
                     );
-                    std::process::exit(0);
+                    // Non-zero on purpose: cosmic-panel respawns applets that
+                    // die abnormally but treats a clean exit 0 as an
+                    // intentional quit and leaves the slot dead.
+                    std::process::exit(1);
                 }
                 // Standalone (e.g. launched from a terminal): exec in place.
                 // This only returns if the exec itself fails.
