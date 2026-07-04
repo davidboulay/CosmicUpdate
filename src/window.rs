@@ -417,8 +417,24 @@ impl cosmic::Application for Window {
                 Self::do_self_update(tag)
             }
             Message::SelfUpdated(Ok(exe)) => {
-                // The binary has been replaced; exec into the new version. This
-                // only returns if the exec itself fails.
+                // The binary has been replaced — now run the new version.
+                //
+                // Under cosmic-panel, exec-ing ourselves can't re-attach to
+                // the panel slot: the panel hands each applet a private
+                // Wayland session when *it* spawns them, and that session
+                // died with the old process image — the exec'd binary falls
+                // back to the regular compositor socket and opens as a
+                // floating window while the panel keeps a dead slot. Exit
+                // instead: cosmic-panel respawns exited applets, and the
+                // respawn runs the replaced binary properly in the panel.
+                if std::env::var_os("COSMIC_PANEL_NAME").is_some() {
+                    tracing::info!(
+                        "self-update installed; exiting so the panel respawns the new version"
+                    );
+                    std::process::exit(0);
+                }
+                // Standalone (e.g. launched from a terminal): exec in place.
+                // This only returns if the exec itself fails.
                 let err = updater::relaunch(&exe);
                 tracing::error!("relaunch after self-update failed: {err}");
                 self.self_updating = false;

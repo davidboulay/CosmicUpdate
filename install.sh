@@ -28,9 +28,11 @@ install_prebuilt() {
     [ "$(uname -m)" = "x86_64" ] || return 1
     command -v curl >/dev/null || return 1
 
+    # The releases/latest web endpoint 302s to .../releases/tag/<tag>; unlike
+    # api.github.com it isn't subject to the anonymous API rate limit.
     local tag
-    tag=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null \
-        | grep -oP '"tag_name":\s*"\K[^"]+' || true)
+    tag=$(curl -fsI "https://github.com/$REPO/releases/latest" 2>/dev/null \
+        | tr -d '\r' | grep -i '^location:' | head -1 | sed 's|.*/tag/||; s|/$||' || true)
     [ -n "$tag" ] || return 1
 
     msg "Found release $tag — downloading prebuilt binary…"
@@ -69,7 +71,9 @@ build_from_source() {
     cargo build --release --locked --manifest-path "$src/Cargo.toml"
     install -Dm755 "$src/target/release/$BIN" "$BIN_DIR/$BIN"
     install -Dm644 "$src/data/$APP_ID.desktop" "$APP_DIR/$APP_ID.desktop"
-    [ -n "$cleanup" ] && rm -rf "$cleanup"
+    # Plain `[ -n ... ] &&` would return 1 here when there is nothing to clean
+    # up (a checkout build), and `set -e` would abort the rest of the script.
+    if [ -n "$cleanup" ]; then rm -rf "$cleanup"; fi
 }
 
 msg "Installing CosmicUpdate to $PREFIX"

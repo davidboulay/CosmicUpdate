@@ -1,6 +1,6 @@
 [package]
 name = "cosmic-applet-updates"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 license = "GPL-3.0-only"
 description = "A COSMIC panel applet that shows pending app and system updates and lets you check for new ones."

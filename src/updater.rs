@@ -18,17 +18,17 @@ const BIN: &str = "cosmic-applet-updates";
 pub const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Ask GitHub for the latest release tag (e.g. "v0.2.0" or "0.2.0").
+///
+/// Uses the *web* endpoint, not api.github.com: the releases/latest page
+/// answers with a 302 to `…/releases/tag/<tag>`, and unlike the API it isn't
+/// subject to the 60-requests/hour anonymous quota that the whole LAN's
+/// public IP shares.
 pub async fn latest_release() -> Result<String, String> {
-    let url = format!("https://api.github.com/repos/{REPO}/releases/latest");
+    let url = format!("https://github.com/{REPO}/releases/latest");
+    // -I: headers only; without -L the 302 itself is the answer (exit 0 —
+    // `-f` only fails on >= 400, e.g. the 404 of a repo with no releases).
     let output = tokio::process::Command::new("curl")
-        .args([
-            "-fsSL",
-            "-H",
-            "Accept: application/vnd.github+json",
-            "-A",
-            "cosmic-applet-updates",
-            &url,
-        ])
+        .args(["-fsI", "-A", BIN, &url])
         .output()
         .await
         .map_err(|e| {
@@ -40,24 +40,36 @@ pub async fn latest_release() -> Result<String, String> {
         })?;
 
     if !output.status.success() {
-        return Err("Could not reach GitHub".to_string());
+        // curl -f exit 22 means an HTTP error; for this URL that's the 404
+        // of "no release yet". Anything else is connectivity.
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(if stderr.contains("404") {
+            "No release published yet".to_string()
+        } else {
+            "Could not reach GitHub".to_string()
+        });
     }
 
-    let body = String::from_utf8_lossy(&output.stdout);
-    parse_tag_name(&body).ok_or_else(|| "No release found".to_string())
+    let headers = String::from_utf8_lossy(&output.stdout);
+    parse_location_tag(&headers).ok_or_else(|| "No release published yet".to_string())
 }
 
-/// Extract the `tag_name` string from the releases JSON without a JSON parser.
-fn parse_tag_name(json: &str) -> Option<String> {
-    let key = json.find("\"tag_name\"")?;
-    let after_key = &json[key + "\"tag_name\"".len()..];
-    let colon = after_key.find(':')?;
-    let after_colon = &after_key[colon + 1..];
-    let open = after_colon.find('"')?;
-    let value = &after_colon[open + 1..];
-    let close = value.find('"')?;
-    let tag = value[..close].trim().to_string();
-    if tag.is_empty() { None } else { Some(tag) }
+/// Extract the tag from the `Location: …/releases/tag/<tag>` redirect header.
+fn parse_location_tag(headers: &str) -> Option<String> {
+    for line in headers.lines() {
+        let Some((name, value)) = line.split_once(':') else {
+            continue; // e.g. the "HTTP/2 302" status line
+        };
+        if name.eq_ignore_ascii_case("location")
+            && let Some((_, tag)) = value.trim().rsplit_once("/tag/")
+        {
+            let tag = tag.trim().trim_end_matches('/').to_string();
+            if !tag.is_empty() {
+                return Some(tag);
+            }
+        }
+    }
+    None
 }
 
 /// `1.2.3` (with optional leading `v` and trailing pre-release) → (1, 2, 3).
@@ -156,22 +168,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn extracts_tag_name() {
-        let json = r#"{"html_url":"https://x/tag/v9.9.9","tag_name":"v0.2.0","name":"r"}"#;
-        assert_eq!(parse_tag_name(json).as_deref(), Some("v0.2.0"));
+    fn extracts_location_tag() {
+        let headers = "HTTP/2 302\r\nserver: GitHub.com\r\nlocation: https://github.com/o/r/releases/tag/v0.3.0\r\ncontent-length: 0\r\n";
+        assert_eq!(parse_location_tag(headers).as_deref(), Some("v0.3.0"));
     }
 
     #[test]
-    fn extracts_tag_name_with_spaces() {
+    fn location_tag_case_insensitive_and_trailing_slash() {
+        let headers = "HTTP/1.1 302 Found\r\nLocation: https://github.com/o/r/releases/tag/1.4.0/\r\n";
+        assert_eq!(parse_location_tag(headers).as_deref(), Some("1.4.0"));
+    }
+
+    #[test]
+    fn no_location_tag() {
+        assert_eq!(parse_location_tag("HTTP/2 200\r\ncontent-type: text/html\r\n"), None);
         assert_eq!(
-            parse_tag_name(r#"{ "tag_name" : "1.4.0" }"#).as_deref(),
-            Some("1.4.0")
+            parse_location_tag("HTTP/2 302\r\nlocation: https://github.com/o/r/releases\r\n"),
+            None
         );
-    }
-
-    #[test]
-    fn no_tag_name() {
-        assert_eq!(parse_tag_name(r#"{"message":"Not Found"}"#), None);
     }
 
     #[test]
