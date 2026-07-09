@@ -302,6 +302,8 @@ impl cosmic::Application for Window {
         match message {
             Message::TogglePopup => {
                 if let Some(p) = self.popup.take() {
+                    // Reset to the main view so reopening never lands on Settings.
+                    self.show_settings = false;
                     destroy_popup(p)
                 } else {
                     let new_id = window::Id::unique();
@@ -319,6 +321,8 @@ impl cosmic::Application for Window {
             Message::CloseRequested(id) => {
                 if Some(id) == self.popup {
                     self.popup = None;
+                    // Reset to the main view so reopening never lands on Settings.
+                    self.show_settings = false;
                 }
                 Task::none()
             }
